@@ -1,0 +1,3 @@
+*.pyc
+nod2svg.egg-info
+out.svg
