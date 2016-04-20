@@ -1,34 +1,22 @@
+""":mod:`nod2svg.main` --- NodalImage object
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Opens Nodal document and builds a SVG image::
+
+    NodalImage(path_to_nod).dump(path_to_svg)
+
+"""
+
 from __future__ import print_function
 import math
 import plistlib
-import sys
 import xml.etree.cElementTree as ET
+
+from .constants import *
 
 all = ('NodalImage',
        'VERSION',
        'main')
-
-NODE = 'Node'
-NOTE = 'Note'
-STYLE_ANNOTATION_COLOR = 'StyleAnnotationColor'
-AUTHOR = 'Author'
-STYLE_BACK_GROUNDCOLOR = 'StyleBackgroundColor'
-COMMENT = 'Comment'
-DONT_PLAY_NOTE = 'DontPlay' + NOTE
-EDGE = 'Edge'
-ELEMENTS = 'Elements'
-FROM_NODE = 'From' + NODE
-PATH = 'Path'
-TEXT = 'Text'
-TEXTBOX = TEXT + 'Box'
-TICKPOS = 'TickPos'
-TITLE = 'Title'
-TO_NODE = 'To' + NODE
-TYPE = 'Type'
-WORMHOLE = 'IsWormhole'
-X = 'X'
-Y = 'Y'
-GRID_TICK = 166320
 
 VERSION = '0.1.0'
 
@@ -48,11 +36,140 @@ class NodalImage(object):
            -99999999999999,
            -99999999999999]
 
+
+    @property
+    def background_color(self):
+        """(:class:`basestring`)
+        The hexadecimal value of the background color
+        .. versionadd:: 0.1.0
+        """
+        return self.bg[:7]
+
+    @property
+    def background_opacity_color(self):
+        """(:class:`basestring`)
+        The percent value of the background opacity
+        .. versionadd:: 0.1.0
+        """
+        return '{0:.2f}'.format(int(self.bg[-2:],16) / 256.0)
+
+    @property
+    def node_color(self):
+        """(:class:`basestring`)
+        The hexadecimal value of the Node color
+        .. versionadd:: 0.1.0
+        """
+        return self.nc[:7]
+
+    @property
+    def node_opacity_color(self):
+        """(:class:`basestring`)
+        The percent value of the Node opacity
+        .. versionadd:: 0.1.0
+        """
+        return '{0:.2f}'.format(int(self.nc[-2:],16) / 256.0)
+
+    @property
+    def node_fill_color(self):
+        """(:class:`basestring`)
+        The hexadecimal value of the Node color.
+        
+        .. seealso::
+            Alias of :meth:`node_color`
+
+        .. versionadd:: 0.1.0
+        """
+        return self.node_color
+
+    @property
+    def node_fill_opacity_color(self):
+        """(:class:`basestring`)
+        The percent value of the Node fill opacity.
+        Defaults to 16% of given alpha.
+
+        .. versionadd:: 0.1.0
+        """
+        given_alpha = int(self.nc[-2:],16) / 256.0
+        return '{0:.2f}'.format(given_alpha * 0.16)
+
+    @property
+    def edge_color(self):
+        """(:class:`basestring`)
+        The hexadecimal value of the Edge color"""
+        return self.ec[:7]
+
+    @property
+    def edge_opacity_color(self):
+        """(:class:`basestring`)
+        The percent value of the Edge opacity.
+
+        .. versionadd:: 0.1.0
+        """
+        return '{0:.2f}'.format(int(self.ec[-2:],16) / 256.0)
+
+    @property
+    def annotation_color(self):
+        """(:class:`basestring`)
+        The hexadecimal value of the Annotation color
+
+        .. versionadd:: 0.1.0
+        """
+        return self.ac[:7]
+
+    @property
+    def annotation_opacity_color(self):
+        """(:class:`basestring`)
+        The percent value of the Annotation opacity."""
+        return '{0:.2f}'.format(int(self.ac[-2:],16) / 256.0)
+
     def __init__(self, path=None):
+        """
+        Initialize NodalImage instance.
+
+        Will load Nodal document if ``path`` argument is given.
+
+        :param path: Optional path of Nodal. Defaul=``None``
+        :type path: :class:`basestring`
+
+        .. versionadded:: 0.1.0
+        """
         if path:
             self.load(path)
 
+    def dump(self, path):
+        """
+        Generates and writes an SVG document to a system path.
+
+        :param path: The system path to write an SVG to.
+        :type path: :class:`basestring`
+
+        .. versionadded:: 0.1.0
+        """
+        root = self.generate()
+        tree = ET.ElementTree(root)
+        tree.write(path, encoding="utf-8", xml_declaration=True)
+
+    def dumps(self):
+        """
+        Generates and returns an SVG document.
+
+        :rtype: :class:`basestring`
+
+        .. versionadded:: 0.1.0
+        """
+        return ET.tostring(self.generate(), encoding="utf-8")
+
     def load(self, path):
+        """
+        Read Nodal document from system path.
+
+        Loads meta-data, style, and element properties.
+
+        :param path: The path to a Nodal document.
+        :type path: :class:`basestring`
+
+        .. versionadded:: 0.1.0
+        """
         with open(path, 'rb') as fd:
             nod = plistlib.readPlist(fd)
             if ELEMENTS in nod:
@@ -72,6 +189,17 @@ class NodalImage(object):
         self.textboxes = self.lookup(TYPE, TEXTBOX)
 
     def lookup(self, attr, val):
+        """
+        Iterate over all elements and return a dictionary with matching
+        scope (``attr``) & value (``val``)
+
+        :param attr: The directory key to scan for.
+        :type attr: :class:`basestring`
+        :param val: The value to filter by.
+        :type val: :class:`basestring`
+
+        .. versionadded:: 0.1.0
+        """
         matches = {}
         for key in self.elements:
             node = self.elements[key]
@@ -80,10 +208,35 @@ class NodalImage(object):
         return matches
 
     def parseTickPos(self, attr):
+        """
+        Convert Nodal coordinate string into tuple.
+
+        .. example::
+
+            "{x y}" => ("x", "y")
+
+        :param attr: The Nodal coordinate string.
+        :type attr: :class:`basestring`
+        :rtype: :class:`tuple`
+
+        .. versionadded:: 0.1.0
+        """
         attr = attr.lstrip('{').rstrip('}')
         return attr.split(', ')
 
     def growMBR(self, x, y):
+        """
+        Increases the size of the Minimum Bounding Rectangle, and returns
+        the original given values as :class:`numbers.Integral`.
+
+        :param x: X coordinate of point.
+        :type x: :class:`basestring`
+        :param y: Y coordinate of point.
+        :type y: :class:`basestring`
+        :rtype: :class:`tuple`
+
+        .. versionadded:: 0.1.0
+        """
         ix = int(x)
         iy = int(y)
         if ix > self.mbr[2]:
@@ -96,49 +249,16 @@ class NodalImage(object):
             self.mbr[1] = iy
         return ix, iy
 
-    @property
-    def background_color(self):
-        return self.bg[:7]
-
-    @property
-    def background_opacity_color(self):
-        return '{0:.2f}'.format(int(self.bg[-2:],16) / 256.0)
-
-    @property
-    def node_color(self):
-        return self.nc[:7]
-
-    @property
-    def node_opacity_color(self):
-        return '{0:.2f}'.format(int(self.nc[-2:],16) / 256.0)
-
-    @property
-    def node_fill_color(self):
-        return self.nc[:7]
-
-    @property
-    def node_fill_opacity_color(self):
-        # Note this defaults to 16% of given alpha
-        given_alpha = int(self.nc[-2:],16) / 256.0
-        return '{0:.2f}'.format(given_alpha * 0.16)
-
-    @property
-    def edge_color(self):
-        return self.ec[:7]
-
-    @property
-    def edge_opacity_color(self):
-        return '{0:.2f}'.format(int(self.ec[-2:],16) / 256.0)
-
-    @property
-    def annotation_color(self):
-        return self.ac[:7]
-
-    @property
-    def annotation_opacity_color(self):
-        return '{0:.2f}'.format(int(self.ac[-2:],16) / 256.0)
-
     def generate_nodes(self, root):
+        """
+        Iterate over all Nodes from element structure, and
+        generate an SVG ``'circle'`` element.
+
+        Additional glyphs will be appended by xlink reference if the Node
+        has been flagged as Parallel or Random attributes. 
+
+        .. versionadd:: 0.1.0
+        """
         group = ET.SubElement(root, 'g')
         n = self.nodes
         for k in n:
@@ -168,85 +288,17 @@ class NodalImage(object):
                             'y': y}
                 use = ET.SubElement(group,'use', **use_attr)
 
-    def path_vertical(self, start, end):
-        if start[Y] > end[Y]:
-            start_y = start[Y] - 64000
-        else:
-            start_y = start[Y] + 64000
-        if end[Y] > start[Y]:
-            end_y = end[Y] - 70400
-        else:
-            end_y = end[Y] + 70400
-        return 'M {0} {1} V {2}'.format(start[X], start_y, end_y)
-
-    def path_horizontal(self, start, end):
-        if start[X] > end[X]:
-            start_x = start[X] - 64000
-        else:
-            start_x = start[X] + 64000
-        if end[X] > start[X]:
-            end_x = end[X] - 70400
-        else:
-            end_x = end[X] + 70400
-        return 'M {0} {1} H {2}'.format(start_x, start[Y], end_x)
-
-    def path_city_block(self, start, end):
-        if start[X] == end[X]:
-            path = self.path_vertical(start, end)
-        elif start[Y] == end[Y]:
-            path = self.path_horizontal(start, end)
-        else:
-            if end[Y] > start[Y]:
-                end_y = end[Y] - 70400
-            else:
-                end_y = end[Y] + 70400
-            if start[X] > end[X]:
-                start_x = start[X] - 64000
-            else:
-                start_x = start[X] + 64000
-            path = "M {0} {1} H {2} V {3}".format(start_x,
-                                                  start[Y],
-                                                  end[X],
-                                                  end_y)
-        return path
-
-    def path_city_block_flipped(self, start, end):
-        if start[X] == end[X]:
-            path = self.path_vertical(start, end)
-        elif start[Y] == end[Y]:
-            path = self.path_horizontal(start, end)
-        else:
-            if start[Y] > end[Y]:
-                start_y = start[Y] - 64000
-            else:
-                start_y = start[Y] + 64000
-            if end[X] > start[X]:
-                end_x = end[X] - 70400
-            else:
-                end_x = end[X] + 70400
-            path = "M {0} {1} V {2} H {3}".format(start[X],
-                                                  start_y,
-                                                  end[Y],
-                                                  end_x)
-        return path
-
-    def path_direct(self, start, end):
-        dy = end[Y] - start[Y]
-        dx = end[X] - start[X]
-        theta = math.atan2(-dy, -dx)
-        theta %= 2 * math.pi
-        theta_cos = math.cos(theta)
-        theta_sin = math.sin(theta)
-        end_x = end[X] + 70400 * theta_cos
-        end_y = end[Y] + 70400 * theta_sin
-        start_x = start[X] - 64000 * theta_cos
-        start_y = start[Y] - 64000 * theta_sin
-        return  "M {0} {1} L {2} {3}".format(start_x,
-                                             start_y,
-                                             end_x,
-                                             end_y)
-
     def generate_edges(self, root):
+        """
+        Iterate over all edge elements, and build SVG paths between nodes.
+
+        This assumes that :attr:`NodalImage.nodes` has already been populated.
+
+        :param root: The XML root node to append grouped path elements.
+        :type root: :class:`xml.etree.cElementTree.Element`
+
+        .. versionadd:: 0.1.0
+        """
         g_edges = ET.SubElement(root, 'g')
         e = self.edges
         for k in e:
@@ -274,6 +326,18 @@ class NodalImage(object):
                 line.attrib['stroke-dasharray'] = '32000 12800'
 
     def generate_text_boxes(self, root):
+        """
+        Iterate over all text box elements, and build SVG foreignObject
+        for each text element.
+
+        This assumes that :attr:`NodalImage.textboxes` has already been
+        populated.
+
+        :param root: The XML root node to append grouped foreignObject elements.
+        :type root: :class:`xml.etree.cElementTree.Element`
+
+        .. versionadd:: 0.1.0
+        """
         texts = self.textboxes
         g_text = ET.SubElement(root, 'g')
         w3_uri = 'http://www.w3.org/1999/xhtml'
@@ -300,6 +364,16 @@ class NodalImage(object):
             fobject.append(html)
 
     def generate(self):
+        """
+        Create SVG DOM tree, and attache groups of nodes, edges, and text
+        graphics elements.
+
+        Returns root element to determine writing/output options.
+
+        :rtype: :class:`xml.etree.cElementTree.Element`
+
+        .. versionadded:: 0.1.0
+        """
         svg_attr = {'xmlns': 'http://www.w3.org/2000/svg',
                     'xmlns:xlink': 'http://www.w3.org/1999/xlink',
                     'version': '1.1',
@@ -359,18 +433,148 @@ class NodalImage(object):
         svg.attrib['viewBox'] = '{0} {1} {2} {3}'.format(t, l , w, h)
         return svg
 
-    def dump(self, path):
-        root = self.generate()
-        tree = ET.ElementTree(root)
-        tree.write(path, encoding="utf-8", xml_declaration=True)
 
-    def dumps(self):
-        return ET.tostring(self.generate(), encoding="utf-8")
+    def path_vertical(self, start, end):
+        """
+        Generate vertical path data.
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-    options = argv[1:]
+        :param start: Start point.
+        :type start: :class:`tuple`
+        :param end: End point.
+        :type end: :class:`tuple`
+        :rtype: :class:`basestring`
+
+        .. versionadd:: 0.1.0
+        """
+        if start[Y] > end[Y]:
+            start_y = start[Y] - 64000
+        else:
+            start_y = start[Y] + 64000
+        if end[Y] > start[Y]:
+            end_y = end[Y] - 70400
+        else:
+            end_y = end[Y] + 70400
+        return 'M {0} {1} V {2}'.format(start[X], start_y, end_y)
+
+    def path_horizontal(self, start, end):
+        """
+        Generate horizontal path data.
+
+        :param start: Start point.
+        :type start: :class:`tuple`
+        :param end: End point.
+        :type end: :class:`tuple`
+        :rtype: :class:`basestring`
+
+        .. versionadd:: 0.1.0
+        """
+        if start[X] > end[X]:
+            start_x = start[X] - 64000
+        else:
+            start_x = start[X] + 64000
+        if end[X] > start[X]:
+            end_x = end[X] - 70400
+        else:
+            end_x = end[X] + 70400
+        return 'M {0} {1} H {2}'.format(start_x, start[Y], end_x)
+
+    def path_city_block(self, start, end):
+        """
+        Generate city block path data.
+
+        :param start: Start point.
+        :type start: :class:`tuple`
+        :param end: End point.
+        :type end: :class:`tuple`
+        :rtype: :class:`basestring`
+
+        .. versionadd:: 0.1.0
+        """
+        if start[X] == end[X]:
+            path = self.path_vertical(start, end)
+        elif start[Y] == end[Y]:
+            path = self.path_horizontal(start, end)
+        else:
+            if end[Y] > start[Y]:
+                end_y = end[Y] - 70400
+            else:
+                end_y = end[Y] + 70400
+            if start[X] > end[X]:
+                start_x = start[X] - 64000
+            else:
+                start_x = start[X] + 64000
+            path = "M {0} {1} H {2} V {3}".format(start_x,
+                                                  start[Y],
+                                                  end[X],
+                                                  end_y)
+        return path
+
+    def path_city_block_flipped(self, start, end):
+        """
+        Generate inverted city block path.
+
+        :param start: Start point.
+        :type start: :class:`tuple`
+        :param end: End point.
+        :type end: :class:`tuple`
+        :rtype: :class:`basestring`
+
+        .. versionadd:: 0.1.0
+        """
+        if start[X] == end[X]:
+            path = self.path_vertical(start, end)
+        elif start[Y] == end[Y]:
+            path = self.path_horizontal(start, end)
+        else:
+            if start[Y] > end[Y]:
+                start_y = start[Y] - 64000
+            else:
+                start_y = start[Y] + 64000
+            if end[X] > start[X]:
+                end_x = end[X] - 70400
+            else:
+                end_x = end[X] + 70400
+            path = "M {0} {1} V {2} H {3}".format(start[X],
+                                                  start_y,
+                                                  end[Y],
+                                                  end_x)
+        return path
+
+    def path_direct(self, start, end):
+        """
+        Generate straight-line path data between two points.
+
+        :param start: Start point.
+        :type start: :class:`tuple`
+        :param end: End point.
+        :type end: :class:`tuple`
+        :rtype: :class:`basestring`
+
+        .. versionadd:: 0.1.0
+        """
+        dy = end[Y] - start[Y]
+        dx = end[X] - start[X]
+        theta = math.atan2(-dy, -dx)
+        theta %= 2 * math.pi
+        theta_cos = math.cos(theta)
+        theta_sin = math.sin(theta)
+        end_x = end[X] + 70400 * theta_cos
+        end_y = end[Y] + 70400 * theta_sin
+        start_x = start[X] - 64000 * theta_cos
+        start_y = start[Y] - 64000 * theta_sin
+        return  "M {0} {1} L {2} {3}".format(start_x,
+                                             start_y,
+                                             end_x,
+                                             end_y)
+
+def main():
+    """
+    Entry point for console script.
+
+    .. versionadd:: 0.1.0
+    """
+    import sys
+    options = sys.argv[1:]
     try:
         nod = NodalImage(options[0])
         if len(options) == 2:
@@ -385,4 +589,4 @@ def main(argv=None):
         print(msg)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
