@@ -20,7 +20,31 @@ all = ('NodalImage',
 
 VERSION = '0.1.0'
 
+
 class NodalImage(object):
+    """
+    A primary class for parsing Nodal documents, and generating an SVG image.
+
+    Write an SVG image::
+
+        from nod2svg.main import NodalImage
+
+        NodalImage(path_to_nod).dump(path_to_svg)
+
+    Generating an SVG string::
+
+        from nod2svg.main import NodalImage
+
+        svg_string = NodalImage(path_to_nod).dumps()
+
+    Generate a SVG DOM tree::
+
+        from nod2svg.main import NodalImage
+
+        svg_dom_root = NodalImage(path_to_nod).generate()
+
+    .. versionadded:: 0.1.0
+    """
     VERSION = VERSION
     elements = {}
     edges = {}
@@ -36,12 +60,11 @@ class NodalImage(object):
            -99999999999999,
            -99999999999999]
 
-
     @property
     def background_color(self):
         """(:class:`basestring`)
         The hexadecimal value of the background color
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         return self.bg[:7]
 
@@ -49,15 +72,15 @@ class NodalImage(object):
     def background_opacity_color(self):
         """(:class:`basestring`)
         The percent value of the background opacity
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.bg[-2:],16) / 256.0)
+        return '{0:.2f}'.format(int(self.bg[-2:], 16) / 256.0)
 
     @property
     def node_color(self):
         """(:class:`basestring`)
         The hexadecimal value of the Node color
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         return self.nc[:7]
 
@@ -65,19 +88,19 @@ class NodalImage(object):
     def node_opacity_color(self):
         """(:class:`basestring`)
         The percent value of the Node opacity
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.nc[-2:],16) / 256.0)
+        return '{0:.2f}'.format(int(self.nc[-2:], 16) / 256.0)
 
     @property
     def node_fill_color(self):
         """(:class:`basestring`)
         The hexadecimal value of the Node color.
-        
+
         .. seealso::
             Alias of :meth:`node_color`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         return self.node_color
 
@@ -87,9 +110,9 @@ class NodalImage(object):
         The percent value of the Node fill opacity.
         Defaults to 16% of given alpha.
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
-        given_alpha = int(self.nc[-2:],16) / 256.0
+        given_alpha = int(self.nc[-2:], 16) / 256.0
         return '{0:.2f}'.format(given_alpha * 0.16)
 
     @property
@@ -103,16 +126,16 @@ class NodalImage(object):
         """(:class:`basestring`)
         The percent value of the Edge opacity.
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.ec[-2:],16) / 256.0)
+        return '{0:.2f}'.format(int(self.ec[-2:], 16) / 256.0)
 
     @property
     def annotation_color(self):
         """(:class:`basestring`)
         The hexadecimal value of the Annotation color
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         return self.ac[:7]
 
@@ -120,7 +143,7 @@ class NodalImage(object):
     def annotation_opacity_color(self):
         """(:class:`basestring`)
         The percent value of the Annotation opacity."""
-        return '{0:.2f}'.format(int(self.ac[-2:],16) / 256.0)
+        return '{0:.2f}'.format(int(self.ac[-2:], 16) / 256.0)
 
     def __init__(self, path=None):
         """
@@ -128,7 +151,7 @@ class NodalImage(object):
 
         Will load Nodal document if ``path`` argument is given.
 
-        :param path: Optional path of Nodal. Defaul=``None``
+        :param path: Optional path of Nodal. Default=``None``
         :type path: :class:`basestring`
 
         .. versionadded:: 0.1.0
@@ -207,11 +230,11 @@ class NodalImage(object):
                 matches[key] = node
         return matches
 
-    def parseTickPos(self, attr):
+    def parse_tick_position(self, attr):
         """
         Convert Nodal coordinate string into tuple.
 
-        .. example::
+        for example::
 
             "{x y}" => ("x", "y")
 
@@ -224,7 +247,7 @@ class NodalImage(object):
         attr = attr.lstrip('{').rstrip('}')
         return attr.split(', ')
 
-    def growMBR(self, x, y):
+    def grow_minimum_bounding_rectangle(self, x, y):
         """
         Increases the size of the Minimum Bounding Rectangle, and returns
         the original given values as :class:`numbers.Integral`.
@@ -255,16 +278,16 @@ class NodalImage(object):
         generate an SVG ``'circle'`` element.
 
         Additional glyphs will be appended by xlink reference if the Node
-        has been flagged as Parallel or Random attributes. 
+        has been flagged as Parallel or Random attributes.
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         group = ET.SubElement(root, 'g')
         n = self.nodes
         for k in n:
             v = n[k]
-            x, y = self.parseTickPos(v[TICKPOS])
-            v[X], v[Y] = self.growMBR(x, y)
+            x, y = self.parse_tick_position(v[TICKPOS])
+            v[X], v[Y] = self.grow_minimum_bounding_rectangle(x, y)
 
             dot_attr = {'cx': x,
                         'cy': y,
@@ -281,12 +304,12 @@ class NodalImage(object):
                 use_attr = {'xlink:href': '#parallel_head',
                             'x': x,
                             'y': y}
-                use = ET.SubElement(group,'use', **use_attr)
+                use = ET.SubElement(group, 'use', **use_attr)
             elif v['SignallingMethod'] == 'Random':
                 use_attr = {'xlink:href': '#random_head',
                             'x': x,
                             'y': y}
-                use = ET.SubElement(group,'use', **use_attr)
+                use = ET.SubElement(group, 'use', **use_attr)
 
     def generate_edges(self, root):
         """
@@ -297,7 +320,7 @@ class NodalImage(object):
         :param root: The XML root node to append grouped path elements.
         :type root: :class:`xml.etree.cElementTree.Element`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         g_edges = ET.SubElement(root, 'g')
         e = self.edges
@@ -333,10 +356,11 @@ class NodalImage(object):
         This assumes that :attr:`NodalImage.textboxes` has already been
         populated.
 
-        :param root: The XML root node to append grouped foreignObject elements.
+        :param root: The XML root node to append grouped foreignObject
+                     elements.
         :type root: :class:`xml.etree.cElementTree.Element`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         texts = self.textboxes
         g_text = ET.SubElement(root, 'g')
@@ -348,18 +372,18 @@ class NodalImage(object):
                    'requiredExtensions': w3_uri}
         for k in texts:
             v = texts[k]
-            x, y = self.parseTickPos(v[TICKPOS])
-            v[X], v[Y] = self.growMBR(x, y)
+            x, y = self.parse_tick_position(v[TICKPOS])
+            v[X], v[Y] = self.grow_minimum_bounding_rectangle(x, y)
             html = ET.fromstring(v[TEXT])
             #  Poorly attempt to scale text up to a level that can be viewed.
             t = 'scale(5000) translate({}, {})'.format(-v[X] * 0.999785,
                                                        -v[Y] * 0.999795)
             fobject = ET.SubElement(g_text,
-                                   'foreignObject',
-                                   x=x,
-                                   y=y,
-                                   transform=t,
-                                   **fo_attr)
+                                    'foreignObject',
+                                    x=x,
+                                    y=y,
+                                    transform=t,
+                                    **fo_attr)
             html.attrib['xmlns'] = w3_uri
             fobject.append(html)
 
@@ -413,10 +437,10 @@ class NodalImage(object):
         # data = 'M 32000 6400 L 58000 82000 M 6400 32000 L 82000 58000'
         data = 'M 27840 16704 L 72320 55680 M 11136 27840 L 55680 66752'
         parallel_attr = {'d': data,
-                     'id': 'parallel_head',
-                     'stroke': self.node_color,
-                     'stroke-opacity': self.node_opacity_color,
-                     'stroke-width': '6400'}
+                         'id': 'parallel_head',
+                         'stroke': self.node_color,
+                         'stroke-opacity': self.node_opacity_color,
+                         'stroke-width': '6400'}
         path = ET.SubElement(defs,
                              'path',
                              **parallel_attr)
@@ -430,9 +454,8 @@ class NodalImage(object):
         t, l, w, h = self.mbr
         w = abs(t) + abs(w)
         h = abs(l) + abs(h)
-        svg.attrib['viewBox'] = '{0} {1} {2} {3}'.format(t, l , w, h)
+        svg.attrib['viewBox'] = '{0} {1} {2} {3}'.format(t, l, w, h)
         return svg
-
 
     def path_vertical(self, start, end):
         """
@@ -444,7 +467,7 @@ class NodalImage(object):
         :type end: :class:`tuple`
         :rtype: :class:`basestring`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         if start[Y] > end[Y]:
             start_y = start[Y] - 64000
@@ -466,7 +489,7 @@ class NodalImage(object):
         :type end: :class:`tuple`
         :rtype: :class:`basestring`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         if start[X] > end[X]:
             start_x = start[X] - 64000
@@ -488,7 +511,7 @@ class NodalImage(object):
         :type end: :class:`tuple`
         :rtype: :class:`basestring`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         if start[X] == end[X]:
             path = self.path_vertical(start, end)
@@ -519,7 +542,7 @@ class NodalImage(object):
         :type end: :class:`tuple`
         :rtype: :class:`basestring`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         if start[X] == end[X]:
             path = self.path_vertical(start, end)
@@ -550,7 +573,7 @@ class NodalImage(object):
         :type end: :class:`tuple`
         :rtype: :class:`basestring`
 
-        .. versionadd:: 0.1.0
+        .. versionadded:: 0.1.0
         """
         dy = end[Y] - start[Y]
         dx = end[X] - start[X]
@@ -562,16 +585,17 @@ class NodalImage(object):
         end_y = end[Y] + 70400 * theta_sin
         start_x = start[X] - 64000 * theta_cos
         start_y = start[Y] - 64000 * theta_sin
-        return  "M {0} {1} L {2} {3}".format(start_x,
-                                             start_y,
-                                             end_x,
-                                             end_y)
+        return "M {0} {1} L {2} {3}".format(start_x,
+                                            start_y,
+                                            end_x,
+                                            end_y)
+
 
 def main():
     """
     Entry point for console script.
 
-    .. versionadd:: 0.1.0
+    .. versionadded:: 0.1.0
     """
     import sys
     options = sys.argv[1:]
