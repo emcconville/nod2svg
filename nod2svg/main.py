@@ -6,7 +6,6 @@ Opens Nodal document and builds a SVG image::
     NodalImage(path_to_nod).dump(path_to_svg)
 
 """
-
 from __future__ import print_function
 import math
 import plistlib
@@ -74,7 +73,7 @@ class NodalImage(object):
         The percent value of the background opacity
         .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.bg[-2:], 16) / 256.0)
+        return STRING_FLOAT_FORMAT.format(int(self.bg[-2:], 16) / 256.0)
 
     @property
     def node_color(self):
@@ -90,7 +89,7 @@ class NodalImage(object):
         The percent value of the Node opacity
         .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.nc[-2:], 16) / 256.0)
+        return STRING_FLOAT_FORMAT.format(int(self.nc[-2:], 16) / 256.0)
 
     @property
     def node_fill_color(self):
@@ -113,7 +112,7 @@ class NodalImage(object):
         .. versionadded:: 0.1.0
         """
         given_alpha = int(self.nc[-2:], 16) / 256.0
-        return '{0:.2f}'.format(given_alpha * 0.16)
+        return STRING_FLOAT_FORMAT.format(given_alpha * 0.16)
 
     @property
     def edge_color(self):
@@ -128,7 +127,7 @@ class NodalImage(object):
 
         .. versionadded:: 0.1.0
         """
-        return '{0:.2f}'.format(int(self.ec[-2:], 16) / 256.0)
+        return STRING_FLOAT_FORMAT.format(int(self.ec[-2:], 16) / 256.0)
 
     @property
     def annotation_color(self):
@@ -143,7 +142,7 @@ class NodalImage(object):
     def annotation_opacity_color(self):
         """(:class:`basestring`)
         The percent value of the Annotation opacity."""
-        return '{0:.2f}'.format(int(self.ac[-2:], 16) / 256.0)
+        return STRING_FLOAT_FORMAT.format(int(self.ac[-2:], 16) / 256.0)
 
     def __init__(self, path=None):
         """
@@ -203,8 +202,8 @@ class NodalImage(object):
                 self.title = nod[TITLE]
             if COMMENT in nod:
                 self.comment = nod[COMMENT]
-            if STYLE_BACK_GROUNDCOLOR in nod:
-                self.bg = nod[STYLE_BACK_GROUNDCOLOR]
+            if STYLE_BACKGROUND_COLOR in nod:
+                self.bg = nod[STYLE_BACKGROUND_COLOR]
             if STYLE_ANNOTATION_COLOR in nod:
                 self.ac = nod[STYLE_ANNOTATION_COLOR]
         self.nodes = self.lookup(TYPE, NODE)
@@ -329,11 +328,11 @@ class NodalImage(object):
             start = self.nodes['{0}'.format(v[FROM_NODE])]
             end = self.nodes['{0}'.format(v[TO_NODE])]
 
-            if v[PATH] == 'Direct':
+            if v[PATH] == DIRECT:
                 path = self.path_direct(start, end)
-            elif v[PATH] == 'CityBlock':
+            elif v[PATH] == CITYBLOCK:
                 path = self.path_city_block(start, end)
-            elif v[PATH] == 'CityBlockFlipped':
+            elif v[PATH] == CITYBLOCKFLIPPED:
                 path = self.path_city_block_flipped(start, end)
             else:
                 continue
