@@ -53,6 +53,9 @@ class NodalImage(object):
     ec = '#717589ff'
     nc = '#9b9effff'
     ac = '#ffffff80'
+    title = None
+    author = None
+    comment = None
 
     mbr = [99999999999999,
            99999999999999,
@@ -446,10 +449,10 @@ class NodalImage(object):
         self.generate_nodes(svg)
         self.generate_edges(svg)
         self.generate_text_boxes(svg)
-        self.mbr[0] -= GRID_TICK
-        self.mbr[1] -= GRID_TICK
-        self.mbr[2] += GRID_TICK
-        self.mbr[3] += GRID_TICK
+        self.mbr[0] -= GRID_TICK * 2
+        self.mbr[1] -= GRID_TICK * 2
+        self.mbr[2] += GRID_TICK * 2
+        self.mbr[3] += GRID_TICK * 2
         t, l, w, h = self.mbr
         w = abs(t) + abs(w)
         h = abs(l) + abs(h)
