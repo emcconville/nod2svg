@@ -218,6 +218,9 @@ class NodalImage(object):
         Iterate over all elements and return a dictionary with matching
         scope (``attr``) & value (``val``)
 
+        If element has key :const:`nod2svg.constants.TICKPOS` then parse tick
+        position, grow minimum bounding rectangle, and index coordinates.
+
         :param attr: The directory key to scan for.
         :type attr: :class:`basestring`
         :param val: The value to filter by.
@@ -229,6 +232,10 @@ class NodalImage(object):
         for key in self.elements:
             node = self.elements[key]
             if attr in node and node[attr] == val:
+                if TICKPOS in node:
+                    x, y = self.parse_tick_position(node[TICKPOS])
+                    node[X], node[Y] = self.grow_minimum_bounding_rectangle(x,
+                                                                            y)
                 matches[key] = node
         return matches
 
@@ -288,11 +295,8 @@ class NodalImage(object):
         n = self.nodes
         for k in n:
             v = n[k]
-            x, y = self.parse_tick_position(v[TICKPOS])
-            v[X], v[Y] = self.grow_minimum_bounding_rectangle(x, y)
-
-            dot_attr = {'cx': x,
-                        'cy': y,
+            dot_attr = {'cx': '{0}'.format(v[X]),
+                        'cy': '{0}'.format(v[Y]),
                         'r': '64000',
                         'fill': self.node_fill_color,
                         'fill-opacity': self.node_fill_opacity_color,
@@ -304,13 +308,13 @@ class NodalImage(object):
                 dot.attrib['stroke-dasharray'] = '32000 12800'
             if v['SignallingMethod'] == 'Parallel':
                 use_attr = {'xlink:href': '#parallel_head',
-                            'x': x,
-                            'y': y}
+                            'x': '{0}'.format(v[X]),
+                            'y': '{0}'.format(v[Y])}
                 use = ET.SubElement(group, 'use', **use_attr)
             elif v['SignallingMethod'] == 'Random':
                 use_attr = {'xlink:href': '#random_head',
-                            'x': x,
-                            'y': y}
+                            'x': '{0}'.format(v[X]),
+                            'y': '{0}'.format(v[Y])}
                 use = ET.SubElement(group, 'use', **use_attr)
 
     def generate_edges(self, root):
@@ -374,16 +378,15 @@ class NodalImage(object):
                    'requiredExtensions': w3_uri}
         for k in texts:
             v = texts[k]
-            x, y = self.parse_tick_position(v[TICKPOS])
-            v[X], v[Y] = self.grow_minimum_bounding_rectangle(x, y)
             html = ET.fromstring(v[TEXT])
             #  Poorly attempt to scale text up to a level that can be viewed.
-            t = 'scale(5000) translate({}, {})'.format(-v[X] * 0.999785,
-                                                       -v[Y] * 0.999795)
+            t = 'scale(4150) translate({}, {})'.format(-v[X] * 0.999755,
+                                                       -v[Y] * 0.999765)
+            #t = 'matrix(4000, 0, 0, 4000, 0, 0)'
             fobject = ET.SubElement(g_text,
                                     'foreignObject',
-                                    x=x,
-                                    y=y,
+                                    x='{0}'.format(v[X]),
+                                    y='{0}'.format(v[Y]),
                                     transform=t,
                                     **fo_attr)
             html.attrib['xmlns'] = w3_uri
@@ -446,9 +449,9 @@ class NodalImage(object):
         path = ET.SubElement(defs,
                              'path',
                              **parallel_attr)
-        self.generate_nodes(svg)
-        self.generate_edges(svg)
         self.generate_text_boxes(svg)
+        self.generate_edges(svg)
+        self.generate_nodes(svg)
         self.mbr[0] -= GRID_TICK * 2
         self.mbr[1] -= GRID_TICK * 2
         self.mbr[2] += GRID_TICK * 2
