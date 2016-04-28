@@ -41,7 +41,7 @@ setup(
 
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[],
-    extras_require={},
+    extras_require={'doc': ['Sphinx >=1.0']},
     package_data={},
 
     # Although 'package_data' is the preferred approach, in some case you may
