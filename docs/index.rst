@@ -11,7 +11,7 @@ You can install a development version from Github_.
 
 .. sourcecode:: bash
 
-    $ pip install -e https://github.com/emcconville/nod2svg.git
+    $ pip install nod2svg
 
 .. _Nodal: http://www.csse.monash.edu.au/~cema/nodal/
 .. _Github: https://github.com/emcconville/nod2svg
