@@ -227,11 +227,15 @@ class NodalImage(object):
         :type val: :class:`basestring`
 
         .. versionadded:: 0.1.0
+        .. versionchanged:: 0.1.1
+           Generate DOM ID attributes for all elements.
         """
         matches = {}
         for key in self.elements:
             node = self.elements[key]
             if attr in node and node[attr] == val:
+                # Generate DOM ID for future reference.
+                node[DOM_ID] = ID_FORMAT.format(val, len(matches))
                 if TICKPOS in node:
                     x, y = self.parse_tick_position(node[TICKPOS])
                     node[X], node[Y] = self.grow_minimum_bounding_rectangle(x,
@@ -290,6 +294,9 @@ class NodalImage(object):
         has been flagged as Parallel or Random attributes.
 
         .. versionadded:: 0.1.0
+        .. versionchanged:: 0.1.1
+            Mouseover events now build Node elements and connected
+            Edge elements.
         """
         group = ET.SubElement(root, 'g')
         n = self.nodes
@@ -297,6 +304,7 @@ class NodalImage(object):
             v = n[k]
             dot_attr = {'cx': '{0}'.format(v[X]),
                         'cy': '{0}'.format(v[Y]),
+                        'id': v[DOM_ID],
                         'r': '64000',
                         'fill': self.node_fill_color,
                         'fill-opacity': self.node_fill_opacity_color,
@@ -304,6 +312,11 @@ class NodalImage(object):
                         'stroke-opacity': self.node_opacity_color,
                         'stroke-width': '6400'}
             dot = ET.SubElement(group, 'circle', **dot_attr)
+            sa = {'attributeName': 'stroke-width',
+                  'to': '12800',
+                  'begin': '{0}.mouseover'.format(v[DOM_ID]),
+                  'end': '{0}.mouseout'.format(v[DOM_ID])}
+            s = ET.SubElement(dot, 'set', **sa)
             if DONT_PLAY_NOTE in v and v[DONT_PLAY_NOTE]:
                 dot.attrib['stroke-dasharray'] = '32000 12800'
             if v['SignallingMethod'] == 'Parallel':
@@ -327,13 +340,20 @@ class NodalImage(object):
         :type root: :class:`xml.etree.cElementTree.Element`
 
         .. versionadded:: 0.1.0
+        .. versionchanged:: 0.1.1
+            Each edge is now isolated within a group element,
+            and includes arrow head marker and Node mouseover
+            effects.
         """
-        g_edges = ET.SubElement(root, 'g')
         e = self.edges
         for k in e:
             v = e[k]
             start = self.nodes['{0}'.format(v[FROM_NODE])]
             end = self.nodes['{0}'.format(v[TO_NODE])]
+
+            if EDGE_OUTS not in start:
+                start[EDGE_OUTS] = []
+            start[EDGE_OUTS].append(v['DOM_ID'])
 
             if v[PATH] == DIRECT:
                 path = self.path_direct(start, end)
@@ -343,16 +363,49 @@ class NodalImage(object):
                 path = self.path_city_block_flipped(start, end)
             else:
                 continue
-
+            edge_idx = len(start[EDGE_OUTS]) - 1
+            edge_color = EDGE_COLORS[edge_idx % len(EDGE_COLORS)]
+            g_edges = ET.SubElement(root, 'g')
+            # Arrow head
+            arrow_head_id = 'arrow_head_'+v['DOM_ID']
+            maker_attr = {'id': arrow_head_id,
+                          'orient': 'auto',
+                          'markerWidth': '6',
+                          'markerHeight': '6',
+                          'refX': '5.0',
+                          'refY': '3'}
+            maker = ET.SubElement(g_edges, 'marker', **maker_attr)
+            path_attr = {'d': 'M 0 0 V 6 L 6 3 Z',
+                         'fill': self.edge_color,
+                         'fill-opacity': self.edge_opacity_color}
+            arrow_head = ET.SubElement(maker,
+                                       'path',
+                                       **path_attr)
+            sa = {'attributeName': 'fill',
+                  'to': edge_color,
+                  'begin': '{0}.mouseover'.format(start[DOM_ID]),
+                  'end': '{0}.mouseout'.format(start[DOM_ID])}
+            s = ET.SubElement(arrow_head, 'set', **sa)
             line_attr = {'d': path,
                          'fill': 'transparent',
-                         'marker-end': 'url(#arrow_head)',
+                         'id': v['DOM_ID'],
+                         'marker-end': 'url(#{0})'.format(arrow_head_id),
                          'stroke': self.edge_color,
                          'stroke-opacity': self.edge_opacity_color,
                          'stroke-width': '6400'}
             line = ET.SubElement(g_edges, 'path', **line_attr)
             if WORMHOLE in v and v[WORMHOLE]:
                 line.attrib['stroke-dasharray'] = '32000 12800'
+            sa = {'attributeName': 'stroke',
+                  'to': edge_color,
+                  'begin': '{0}.mouseover'.format(start[DOM_ID]),
+                  'end': '{0}.mouseout'.format(start[DOM_ID])}
+            s = ET.SubElement(line, 'set', **sa)
+            sa = {'attributeName': 'stroke-width',
+                  'to': '12800',
+                  'begin': '{0}.mouseover'.format(start[DOM_ID]),
+                  'end': '{0}.mouseout'.format(start[DOM_ID])}
+            s = ET.SubElement(line, 'set', **sa)
 
     def generate_text_boxes(self, root):
         """
@@ -382,7 +435,6 @@ class NodalImage(object):
             #  Poorly attempt to scale text up to a level that can be viewed.
             t = 'scale(4150) translate({}, {})'.format(-v[X] * 0.999755,
                                                        -v[Y] * 0.999765)
-            #t = 'matrix(4000, 0, 0, 4000, 0, 0)'
             fobject = ET.SubElement(g_text,
                                     'foreignObject',
                                     x='{0}'.format(v[X]),
@@ -402,6 +454,9 @@ class NodalImage(object):
         :rtype: :class:`xml.etree.cElementTree.Element`
 
         .. versionadded:: 0.1.0
+        .. versionchanged:: 0.1.1
+            Arrow head element removed from document
+            ``'refs'`` table.
         """
         svg_attr = {'xmlns': 'http://www.w3.org/2000/svg',
                     'xmlns:xlink': 'http://www.w3.org/1999/xlink',
@@ -410,20 +465,7 @@ class NodalImage(object):
         svg = ET.Element('svg',
                          **svg_attr)
         defs = ET.SubElement(svg, 'defs')
-        # Arrow head
-        maker_attr = {'id': 'arrow_head',
-                      'orient': 'auto',
-                      'markerWidth': '6',
-                      'markerHeight': '6',
-                      'refX': '5.0',
-                      'refY': '3'}
-        maker = ET.SubElement(defs, 'marker', **maker_attr)
-        path_attr = {'d': 'M 0 0 V 6 L 6 3 Z',
-                     'fill': self.edge_color,
-                     'fill-opacity': self.edge_opacity_color}
-        path = ET.SubElement(maker,
-                             'path',
-                             **path_attr)
+
         # Random head (X mark)
         # Path needs to be re-calculated
         # data = 'M 20000 2000 L 85000 70000 M 2000 20000 L 70000 85000'
