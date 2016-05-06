@@ -33,4 +33,4 @@ WORMHOLE = 'IsWormhole'
 X = 'X'
 Y = 'Y'
 GRID_TICK = 166320
-STRING_FLOAT_FORMAT='{0:.2f}'
+STRING_FLOAT_FORMAT = '{0:.2f}'

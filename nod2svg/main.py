@@ -6,7 +6,6 @@ Opens Nodal document and builds a SVG image::
     NodalImage(path_to_nod).dump(path_to_svg)
 
 """
-from __future__ import print_function
 import math
 import plistlib
 import xml.etree.cElementTree as ET
@@ -14,10 +13,20 @@ import xml.etree.cElementTree as ET
 from .constants import *
 
 all = ('NodalImage',
+       'NodalException',
        'VERSION',
        'main')
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
+
+
+class NodalException(Exception):
+    """
+    Generic exception namespace.
+
+    .. versionadded:: 0.1.2
+    """
+    pass
 
 
 class NodalImage(object):
@@ -192,13 +201,15 @@ class NodalImage(object):
 
         :param path: The path to a Nodal document.
         :type path: :class:`basestring`
+        :raises: :class:`NodalException`
 
         .. versionadded:: 0.1.0
         """
         with open(path, 'rb') as fd:
             nod = plistlib.readPlist(fd)
-            if ELEMENTS in nod:
-                self.elements = nod[ELEMENTS]
+            if ELEMENTS not in nod:
+                raise NodalException('Not a Nodal matrix')
+            self.elements = nod[ELEMENTS]
             if AUTHOR in nod:
                 self.author = nod[AUTHOR]
             if TITLE in nod:
@@ -457,6 +468,8 @@ class NodalImage(object):
         .. versionchanged:: 0.1.1
             Arrow head element removed from document
             ``'refs'`` table.
+        .. versionchanged:: 0.1.2
+            Added title, command, and author attributes.
         """
         svg_attr = {'xmlns': 'http://www.w3.org/2000/svg',
                     'xmlns:xlink': 'http://www.w3.org/1999/xlink',
@@ -491,6 +504,18 @@ class NodalImage(object):
         path = ET.SubElement(defs,
                              'path',
                              **parallel_attr)
+
+        def safe(s):
+            return s.replace('<', '&lt;').replace('>', '&gt;')
+        if self.title is not None:
+            ET.SubElement(svg, 'title').text = safe(self.title)
+        if self.comment is not None:
+            ET.SubElement(svg, 'desc').text = safe(self.comment)
+        comment = ' Created with nod2svg {0} '.format(self.VERSION)
+        svg.append(ET.Comment(comment))
+        if self.author is not None and len(self.author) > 0:
+            author = ' Nodal authored by {0} '.format(self.author)
+            svg.append(ET.Comment(author))
         self.generate_text_boxes(svg)
         self.generate_edges(svg)
         self.generate_nodes(svg)
@@ -643,6 +668,8 @@ def main():
     Entry point for console script.
 
     .. versionadded:: 0.1.0
+    .. versionchanged:: 0.1.2
+       Simplified banner, and sent to stderr.
     """
     import sys
     options = sys.argv[1:]
@@ -651,13 +678,19 @@ def main():
         if len(options) == 2:
             nod.dump(options[1])
         else:
-            print(nod.dumps())
+            sys.stdout.write(nod.dumps().decode() + '\n')
     except IndexError:
-        msg = """\n Nodal to SVG\n -------------\n"""
-        msg += """ Version: {0} by emcconville\n\n""".format(VERSION)
-        msg += """ Copyright (c) emcconville 2016\n\n"""
-        msg += """Usage:\n\n    nod2svg FILEPATH [FILEPATH]\n"""
-        print(msg)
+        msg = ('',
+               ' nod2svg {0} by emcconville',
+               ' -------------------------------------',
+               ' http://github.com/emcconville/nod2svg',
+               '',
+               ' Usage:',
+               '       nod2svg FILEPATH [FILEPATH]',
+               '',
+               '')
+        sys.stderr.write('\n'.join(msg).format(VERSION))
+
 
 if __name__ == '__main__':
     main()
